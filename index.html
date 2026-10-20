@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<!--
+  SKYLINE WEATHER - weather app (Ashish Kumar, CSE 3rd Sem, UGIP Aamwala)
+
+  Data: sirf Open-Meteo ki free APIs (Forecast, Geocoding, Air Quality, Archive). Koi API key nahi.
+  Libraries: Tailwind CSS aur Chart.js (internet se), Lucide Icons (local file).
+
+  FOLDER KA STRUCTURE:
+   skyline-weather/
+   |-- index.html          : HTML  - page ka dhancha (cards, buttons, forms)
+   |-- css/style.css       : CSS   - rang, glass effect, weather themes, animations
+   `-- js/
+       |-- script.js       : JS    - poora logic (data laana, screen bharna, chart, audio)
+       `-- lucide.min.js   : icons ki library (isko edit nahi karna)
+
+  JS KE SECTIONS (js/script.js me upar se neeche):
+   Helpers -> Clock -> Theme -> API/Search -> loadWeather -> Cards/Charts ->
+   Wear Assistant -> Audio Summary -> Year-over-year -> Travel Matcher -> Init
+
+  CHALANE KA TAREEKA: index.html ko browser me kholiye. Teeno files ek hi folder structure me rehni chahiye.
+-->
+<html lang="en">
+<head>
+<!-- Encoding: ° µ aur Hindi jaise special characters sahi dikhane ke liye. -->
+<meta charset="UTF-8">
+<!-- Mobile par page ko screen ki width ke hisaab se dikhata hai (responsive design ka pehla step). -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Browser tab me jo naam dikhta hai. -->
+<title>Skyline Weather</title>
+<!-- Tailwind CSS (internet se): ready-made classes jaise p-4 (padding), flex, grid, text-xl. Isse alag se bahut CSS nahi likhni padti. -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Chart.js (internet se): temperature ke line charts banane ki library. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- Lucide Icons library: weather aur button icons yahi se aate hain. -->
+<!-- Yeh local file hai (js/lucide.min.js), internet par depend nahi karti. Isko edit mat kijiye. -->
+<!-- HTML me <i data-lucide="sun"> likhne par JS (lucide.createIcons) ise asli icon me badal deti hai. -->
+<script src="js/lucide.min.js"></script>
+<!-- Google Font "Outfit": poore page ka font. Load na ho to browser ka normal font use hota hai. -->
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- CSS alag file me hai: css/style.css (themes, glass effect, animations). Tailwind ke upar hamari apni styling. -->
+<link rel="stylesheet" href="css/style.css">
+</head>
+<!-- body ki class (t-sunny) hi theme hai. JS weather ke hisaab se isse t-rain, t-night, t-snow... me badalti hai. -->
+<body class="t-sunny">
+<!-- Background effect layer: barish ki lakeerein, barf, sooraj ki chamak ya taare. JS iski class badalti hai, CSS animation chalati hai. -->
+<div id="fx"></div>
+<!-- Poore page ka main container. max-w-6xl = bade screen par width limit, space-y-5 = sections ke beech gap. -->
+<main class="relative z-10 max-w-6xl mx-auto px-4 py-5 space-y-5">
+
+<!-- HEADER: left me search box aur buttons, right me live clock. Mobile par clock upar aata hai (flex-col-reverse). -->
+<header class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+  <!-- Search form: submit hone par JS (neeche Init section) shehar ka weather laati hai. -->
+  <form id="searchForm" class="flex gap-2 w-full sm:max-w-md">
+    <!-- Shehar likhne ka box. Neeche ka <ul id="sugg"> type karte waqt suggestions dikhane ke liye hai (shuru me hidden). -->
+    <div class="relative flex-1"><input id="cityInput" placeholder="Search a city or state..." aria-label="Search city" autocomplete="off"><ul id="sugg" class="hidden absolute left-0 right-0 top-full mt-2 z-50 rounded-2xl overflow-hidden shadow-2xl text-sm" style="background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,.2)"></ul></div>
+    <button class="btn" type="submit">Search</button>
+    <!-- "Current location" button: browser se aapki location lekar wahan ka weather dikhata hai. -->
+    <button class="btn flex items-center gap-2 whitespace-nowrap" type="button" id="locBtn" title="Switch to current location">
+      <i data-lucide="locate-fixed" class="w-4 h-4"></i><span class="hidden sm:inline">Current location</span>
+    </button>
+  </form>
+  <!-- Live clock + date. JS tick() function har second isse update karta hai. -->
+  <div class="text-right sm:ml-auto"><div id="clock" class="text-lg sm:text-xl font-semibold"></div></div>
+</header>
+
+<!-- Status box: "Fetching weather...", errors aur warnings yahan dikhte hain. Khali ho to hidden rehta hai. -->
+<div id="status" class="hidden glass p-4 text-center"></div>
+
+<!-- HERO CARD: left me shehar ka naam, bada temperature, condition aur audio buttons. Right me Air Quality (AQI) card. -->
+<!-- glass = glassmorphism (dhundhla sheesha jaisa) card style. -->
+<section class="glass p-6 sm:p-8 grid md:grid-cols-2 gap-6 items-center">
+  <div>
+    <p id="place" class="text-xl font-medium sub">Loading...</p>
+    <div class="flex items-center gap-4 mt-2">
+      <span id="temp" class="text-7xl sm:text-8xl font-light leading-none">--°</span>
+      <i id="curIcon" data-lucide="sun" class="w-16 h-16"></i>
+    </div>
+    <p id="cond" class="text-2xl mt-2 font-medium"></p>
+    <p id="feels" class="sub"></p>
+    <!-- Audio summary controls: Play, Stop, bhasha chunne ka dropdown aur voice chunne ka dropdown. -->
+    <div class="mt-4 flex flex-wrap items-center gap-2">
+      <button id="speakBtn" type="button" class="btn inline-flex items-center gap-2">
+        <i data-lucide="volume-2" class="w-4 h-4"></i><span id="speakTxt">Play Audio Summary</span>
+      </button>
+      <button id="stopBtn" type="button" class="tab inline-flex items-center gap-2" style="padding:.6rem 1rem;border-radius:.9rem" disabled aria-label="Stop audio">
+        <i data-lucide="volume-x" class="w-4 h-4"></i><span>Stop</span>
+      </button>
+      <!-- Bolne ki bhasha: Hindi (Devanagari), Hinglish (roman Hindi) ya English. -->
+      <select id="speakLang" aria-label="Voice language" style="width:auto;padding:.6rem .9rem">
+        <option value="hi">हिन्दी</option>
+        <option value="hinglish">Hinglish</option>
+        <option value="en">English</option>
+      </select>
+      <!-- Voice chunne ka dropdown. Shuru me hidden hai; jab ek se zyada voices mile tabhi dikhta hai. -->
+      <select id="voiceSel" class="hidden" aria-label="Choose voice" style="width:auto;max-width:14rem;padding:.6rem .9rem"></select>
+    </div>
+  </div>
+  <!-- AQI card ki khali jagah: JS renderAQI() isme value, rang aur health tip bharti hai. -->
+  <div id="aqi" class="rounded-2xl p-5 border" style="border-color:var(--gb)"></div>
+</section>
+
+<!-- Chhote metric cards (Humidity, Wind, UV, Visibility, Precipitation, Pressure). JS renderCurrent() inhe banati hai. -->
+<!-- Grid: mobile par 2 column, tablet par 3, desktop par 6. -->
+<section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" id="metrics"></section>
+
+<!-- Smart assistant + year-over-year comparison -->
+<!-- Do cards saath me: "What to wear and do" (kapde/activity suggestions) aur "Year over year" (pichhle saal se compare). -->
+<section class="grid md:grid-cols-2 gap-5">
+  <div class="glass p-5"><h2 class="text-lg font-semibold mb-3">What to wear and do today</h2><div id="wear" class="space-y-4"></div></div>
+  <div class="glass p-5" id="yoy"><p class="sub">Loading comparison...</p></div>
+</section>
+
+<!-- HOURLY FORECAST: aaj ke har ghante ka weather. Left-right scroll hota hai (overflow-x-auto). -->
+<section class="glass p-5">
+  <h2 class="text-lg font-semibold mb-3">Today's hourly forecast</h2>
+  <div id="hourly" class="flex gap-3 overflow-x-auto scroll pb-2"></div>
+</section>
+
+<!-- Kal ka weather (1 column) + chart (2 columns). -->
+<section class="grid lg:grid-cols-3 gap-5">
+  <!-- Kal ke weather ki detail yahan JS bharti hai (high/low, rain chance, sunrise, sunset...). -->
+  <div class="glass p-5" id="tomorrow"></div>
+  <div class="glass p-5 lg:col-span-2">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+      <h2 class="text-lg font-semibold">Temperature outlook</h2>
+      <div class="flex gap-2" role="tablist">
+        <!-- Chart ke do tabs: "Today (hourly)" aur "7 days". data-view se JS ko pata chalta hai kaun sa chart banana hai. -->
+        <button type="button" class="tab" data-view="day">Today (hourly)</button>
+        <button type="button" class="tab on" data-view="week">7 days</button>
+      </div>
+    </div>
+    <!-- Chart.js is <canvas> par graph banata hai. -->
+    <div class="relative h-64"><canvas id="chart"></canvas></div>
+    <!-- Chart ke neeche 7 din ka chhota summary (din, icon, max temperature). -->
+    <div id="week" class="grid grid-cols-7 gap-1 mt-3 text-center text-xs sm:text-sm"></div>
+  </div>
+</section>
+
+<!-- Neeche ka section TRAVEL MATCHER hai. -->
+<!-- Travel matcher -->
+<section class="glass p-5 sm:p-6">
+  <h2 class="text-xl font-semibold">Smart travel weather matcher</h2>
+  <p class="sub text-sm mb-4">Pick a destination and a vibe. We check the next 16 days and pull out the days that fit.</p>
+  <!-- Travel form: destination shehar + weather vibe chunkar "Find my days" dabate hain. -->
+  <form id="travelForm" class="grid sm:grid-cols-[1fr_1fr_auto] gap-3">
+    <input id="destInput" placeholder="Destination city, e.g. bihar" aria-label="Destination city" required>
+    <!-- Vibe ke options. value (pleasant, warm, rainy, cold) JS ke VIBES rules se match hote hain. -->
+    <select id="vibe" aria-label="Weather vibe">
+      <option value="pleasant">Pleasant / Cool (avg 18–25°C)</option>
+      <option value="warm">Warm / Sunny (max 26–33°C, clear)</option>
+      <option value="rainy">Rainy vibe (rain or 1mm+)</option>
+      <option value="cold">Cold (avg below 15°C)</option>
+    </select>
+    <button class="btn" type="submit">Find my days</button>
+  </form>
+  <!-- Travel results yahan dikhte hain (matching din upar, baaki neeche). -->
+  <div id="travelOut" class="mt-5"></div>
+</section>
+<p class="text-center text-xs sub pb-4">Data by Open-Meteo. No API key needed.</p>
+</main>
+
+<!-- Poora logic alag file me hai: js/script.js. Isko body ke aakhir me rakha hai, taaki HTML ke elements pehle ban jayein. -->
+<script src="js/script.js"></script>
+</body>
+</html>

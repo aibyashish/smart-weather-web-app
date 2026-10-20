@@ -1,0 +1,62 @@
+/* SKYLINE WEATHER - style.css
+   Yeh file index.html ke <head> me link hoti hai.
+   Yahan page ka saara design hai: theme ke rang, glass effect, animations. */
+
+/* CSS VARIABLES (theme ke rang): --g = card ka glass rang, --gb = card ki border, --tx = text ka rang, --sub = halka text. */
+/* Har theme in values ko badal deti hai, isliye poora page ek saath rang badal leta hai. */
+:root{--g:rgba(255,255,255,.18);--gb:rgba(255,255,255,.35);--tx:#0f2744;--sub:rgba(15,39,68,.7)}
+/* Page ka font, text rang aur background ka smooth badlav (transition 1s). */
+body{font-family:'Outfit',system-ui,sans-serif;color:var(--tx);min-height:100vh;background-attachment:fixed;background-size:cover;transition:background 1s}
+/* WEATHER THEMES: JS body par in me se ek class lagati hai. Har class apna gradient background deti hai. */
+/* Baarish/storm/raat wali themes me text halka aur glass gehra kar diya hai taaki padhna aasaan rahe. */
+.t-sunny{background:linear-gradient(160deg,#4facfe,#7ad7ff 45%,#ffe9a8)}
+.t-cloudy{background:linear-gradient(160deg,#8fa3b8,#b9c6d3 60%,#dfe6ec)}
+/* Dark themes (rain, storm, night) variables ko override karti hain. */
+.t-rain{--g:rgba(15,23,42,.55);--gb:rgba(148,163,184,.3);--tx:#e2e8f0;--sub:rgba(226,232,240,.65);background:linear-gradient(160deg,#0f172a,#1e293b 50%,#334155)}
+.t-storm{--g:rgba(15,10,40,.6);--gb:rgba(167,139,250,.3);--tx:#e9e5ff;--sub:rgba(233,229,255,.65);background:linear-gradient(160deg,#0b0820,#241a52 60%,#3b2f73)}
+.t-night{--g:rgba(8,32,50,.55);--gb:rgba(103,232,249,.28);--tx:#d7f7ff;--sub:rgba(215,247,255,.65);background:linear-gradient(160deg,#020617,#0b2a3f 55%,#2e1065)}
+.t-snow{--g:rgba(255,255,255,.4);--gb:rgba(255,255,255,.75);--tx:#12335a;--sub:rgba(18,51,90,.7);background:linear-gradient(160deg,#d6ecff,#eaf6ff 50%,#c4dcf2)}
+.t-fog{--g:rgba(255,255,255,.28);--gb:rgba(255,255,255,.5);background:linear-gradient(160deg,#9aa5b1,#c5ccd3)}
+/* GLASSMORPHISM: dhundhla (blur) transparent card, patli border aur halki shadow. Saare cards isi class se bante hain. */
+.glass{background:var(--g);border:1px solid var(--gb);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+/* Halke rang ka secondary text (labels, chhote notes). */
+.sub{color:var(--sub)}
+/* Search box aur dropdowns ki common styling. */
+input,select{background:rgba(255,255,255,.2);border:1px solid var(--gb);color:var(--tx);border-radius:.9rem;padding:.65rem 1rem;outline:none;width:100%}
+select option{color:#111}
+input::placeholder{color:var(--sub)}
+input:focus,select:focus,button:focus-visible{box-shadow:0 0 0 2px var(--tx)}
+button:disabled{opacity:.45;cursor:not-allowed}
+/* Main button style. Rang theme ke hisaab se badalta hai (agle do rules). */
+.btn{background:var(--tx);color:var(--g);border-radius:.9rem;padding:.65rem 1.2rem;font-weight:600}
+.t-sunny .btn,.t-snow .btn,.t-cloudy .btn,.t-fog .btn{color:#fff}
+.t-rain .btn,.t-storm .btn,.t-night .btn{color:#0b1220}
+/* Background effects layer: poori screen par, click ko block nahi karti (pointer-events:none). */
+#fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:0;transition:opacity 1s}
+/* Barish: patli tirchhi lakeerein jo animation se neeche girti dikhti hain. */
+#fx.rain{opacity:.5;background:repeating-linear-gradient(105deg,transparent 0 14px,rgba(180,200,230,.35) 14px 15px);background-size:200px 200px;animation:rain .45s linear infinite}
+/* Barf: chhote safed dots jo dheere neeche girte hain. */
+#fx.snow{opacity:.8;background:radial-gradient(3px 3px at 20px 30px,#fff,transparent),radial-gradient(2px 2px at 90px 80px,#fff,transparent),radial-gradient(4px 4px at 150px 20px,#fff,transparent);background-size:180px 160px;animation:snow 6s linear infinite}
+/* Animation steps: background ko khiska kar girne ka effect banate hain. */
+@keyframes rain{to{background-position:-40px 200px}}
+@keyframes snow{to{background-position:30px 160px}}
+/* Accessibility: jin logon ne device me animation band rakhi hai unke liye effects ki animation band. */
+@media(prefers-reduced-motion:reduce){#fx{animation:none!important}}
+/* Hourly card ki minimum width, taaki scroll me cards pichak na jayein. */
+.hour{min-width:92px}
+/* Hourly row ke scrollbar ka chhota, theme jaisa design. */
+.scroll::-webkit-scrollbar{height:6px}.scroll::-webkit-scrollbar-thumb{background:var(--gb);border-radius:9px}
+/* Travel matcher ke matching din ka card: hara gradient aur glow ("Ideal Trip Day"). */
+.ideal{background:linear-gradient(145deg,rgba(34,197,94,.55),rgba(16,185,129,.35));border:1px solid #4ade80;box-shadow:0 0 24px rgba(74,222,128,.55);color:#fff}
+/* Non-matching din: dhundhle aur kam rang wale. */
+.dim{opacity:.55;filter:saturate(.6)}
+/* Theme effects: sun glow (day) and stars (clear night) */
+#fx.sun{opacity:1;background:radial-gradient(circle at 85% 6%,rgba(255,240,170,.95),rgba(255,214,102,.35) 16%,transparent 38%)}
+#fx.stars{opacity:.9;background:radial-gradient(1.5px 1.5px at 10% 20%,#fff,transparent),radial-gradient(1px 1px at 30% 60%,#fff,transparent),radial-gradient(2px 2px at 70% 15%,#cff,transparent),radial-gradient(1px 1px at 85% 70%,#fff,transparent),radial-gradient(1.5px 1.5px at 55% 40%,#fff,transparent),radial-gradient(1px 1px at 20% 85%,#fff,transparent),radial-gradient(1px 1px at 92% 35%,#fff,transparent)}
+/* Pill tabs (chart + map switchers) */
+.tab{padding:.35rem .9rem;border-radius:999px;border:1px solid var(--gb);font-size:.85rem;font-weight:500;transition:.2s}
+.tab.on{background:var(--tx)}
+.t-sunny .tab.on,.t-snow .tab.on,.t-cloudy .tab.on,.t-fog .tab.on{color:#fff}
+.t-rain .tab.on,.t-storm .tab.on,.t-night .tab.on{color:#0b1220}
+/* "What to wear" ke chhote suggestion boxes. */
+.chip{display:flex;gap:.6rem;align-items:flex-start;padding:.55rem .75rem;border-radius:.9rem;background:rgba(255,255,255,.14);font-size:.9rem}
